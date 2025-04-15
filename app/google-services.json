@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "178556881035",
+    "project_id": "greendefender-28dc3",
+    "storage_bucket": "greendefender-28dc3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:178556881035:android:67d0b330565c8bb80a2c8e",
+        "android_client_info": {
+          "package_name": "my.edu.utar.greendefender"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "178556881035-53149ds74pnle75s6ngiqgnfmb10ggs2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD04foVXMQWmh0k99_V-RYAZZLFZ43baJM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "178556881035-53149ds74pnle75s6ngiqgnfmb10ggs2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
