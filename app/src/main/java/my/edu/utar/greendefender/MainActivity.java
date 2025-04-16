@@ -26,11 +26,11 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-
 public class MainActivity extends AppCompatActivity {
 
     // UI Components matching XML
@@ -43,14 +43,33 @@ public class MainActivity extends AppCompatActivity {
     private static final int GALLERY_REQUEST_CODE = 101;
     private static final int CAMERA_PERMISSION_CODE = 102;
     private static final int STORAGE_PERMISSION_CODE = 103;
-    private static final int IMAGE_SIZE = 224; // Standard size for many ML models
-    private static final String MODEL_FILE = "rosesDetectionFYP1.tflite";
+    private static final int IMAGE_SIZE = 96;
+    private static final String MODEL_FILE = "roseDetectionFYP1.tflite";
     private static final String[] CLASSES = {
             "Rose Slug", "Rose Mosaic", "Powdery Mildew", "Downy Mildew", "Black Spot"
     };
 
     // TensorFlow Lite
     private Interpreter tfliteInterpreter;
+
+    private void checkAssets() {
+        try {
+            // List all files in assets folder
+            String[] files = getAssets().list("");
+            Log.d("ASSETS", "Files in assets folder:");
+            for (String file : files) {
+                Log.d("ASSETS", file);
+            }
+
+            // Try to open the model file
+            try (InputStream is = getAssets().open(MODEL_FILE)) {
+                Log.d("MODEL", "Model file exists and is accessible");
+                Log.d("MODEL", "Model file size: " + is.available() + " bytes");
+            }
+        } catch (IOException e) {
+            Log.e("ASSETS", "Error accessing assets", e);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,12 +101,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private MappedByteBuffer loadModelFile() throws IOException {
-        AssetFileDescriptor fileDescriptor = getAssets().openFd(MODEL_FILE);
-        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
-        FileChannel fileChannel = inputStream.getChannel();
-        long startOffset = fileDescriptor.getStartOffset();
-        long declaredLength = fileDescriptor.getDeclaredLength();
-        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+        AssetFileDescriptor fileDescriptor = null;
+        try {
+            fileDescriptor = getAssets().openFd(MODEL_FILE);
+            FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+            FileChannel fileChannel = inputStream.getChannel();
+            long startOffset = fileDescriptor.getStartOffset();
+            long declaredLength = fileDescriptor.getDeclaredLength();
+            return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+        } catch (IOException e) {
+            Log.e("TFLite", "Error loading model file: " + e.getMessage());
+            try {
+                if (fileDescriptor != null) {
+                    fileDescriptor.close();
+                }
+            } catch (IOException ex) {
+                Log.e("TFLite", "Error closing file descriptor", ex);
+            }
+            throw e;
+        }
     }
 
     private void checkCameraPermission() {
@@ -251,4 +283,6 @@ public class MainActivity extends AppCompatActivity {
             tfliteInterpreter.close();
         }
     }
+
+
 }
