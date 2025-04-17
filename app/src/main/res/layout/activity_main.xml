@@ -17,8 +17,7 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="16dp"
         android:text="Diagnose Plant Health"
-        android:textColor="@color/light_yellow"
-        android:background="@color/coral"
+        android:textColor="@color/coral"
         android:textSize="26sp"
         android:textStyle="bold" />
 
@@ -31,7 +30,7 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="20dp"
         android:adjustViewBounds="false"
-        android:background="@color/coral"
+
         android:scaleType="centerCrop"
         tools:srcCompat="@drawable/leaf" />
 
