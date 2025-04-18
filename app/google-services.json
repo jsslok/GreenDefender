@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "178556881035-sd7adamqthgurt0v0h144vkq1gfo29vb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "my.edu.utar.greendefender",
+            "certificate_hash": "a683b14d95689eed80d6cc221f888936f172ce3d"
+          }
+        },
+        {
           "client_id": "178556881035-53149ds74pnle75s6ngiqgnfmb10ggs2.apps.googleusercontent.com",
           "client_type": 3
         }

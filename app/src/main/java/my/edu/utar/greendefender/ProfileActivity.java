@@ -1,167 +1,171 @@
-//package my.edu.utar.greendefender;
-//
-//import android.os.Bundle;
-//import android.text.TextUtils;
-//import android.view.View;
-//import android.widget.EditText;
-//import android.widget.TextView;
-//import android.widget.Toast;
-//import androidx.annotation.NonNull;
-//import androidx.appcompat.app.AppCompatActivity;
-//import com.google.firebase.auth.FirebaseAuth;
-//import com.google.firebase.auth.FirebaseUser;
-//import com.google.firebase.database.DataSnapshot;
-//import com.google.firebase.database.DatabaseError;
-//import com.google.firebase.database.DatabaseReference;
-//import com.google.firebase.database.FirebaseDatabase;
-//import com.google.firebase.database.ValueEventListener;
-//
-//public class ProfileActivity extends AppCompatActivity {
-//
-//    private EditText etUsername, etLocation;
-//    private TextView tvUsername, tvEmail, tvLocation;
-//    private boolean isEditing = false;
-///
-//    private FirebaseAuth mAuth;
-//    private DatabaseReference mDatabase;
-//    private String userId;
-//
-//    @Override
-//    protected void onCreate(Bundle savedInstanceState) {
-//        super.onCreate(savedInstanceState);
-//        setContentView(R.layout.activity_profile);
-//
-//        // Initialize Firebase
-//        mAuth = FirebaseAuth.getInstance();
-//        mDatabase = FirebaseDatabase.getInstance().getReference();
-//        FirebaseUser currentUser = mAuth.getCurrentUser();
-//
-//        if (currentUser == null) {
-//            finish();
-//            return;
-//        }
-//        userId = currentUser.getUid();
-//
-//        // Initialize views
-//        etUsername = findViewById(R.id.et_username);
-//        etLocation = findViewById(R.id.et_location);
-//        tvUsername = findViewById(R.id.tv_username);
-//        tvEmail = findViewById(R.id.tv_email);
-//        tvLocation = findViewById(R.id.tv_location);
-//
-//        // Set default values
-//        tvEmail.setText(currentUser.getEmail() != null ? currentUser.getEmail() : "user@example.com");
-//        tvUsername.setText("PlantLover");
-//        tvLocation.setText("Kuala Lumpur");
-//
-//        // Load user data from Firebase
-//        loadUserData();
-//
-//        // Set edit/save functionality
-//        setupEditButtons();
-//    }
-//
-//    private void loadUserData() {
-//        mDatabase.child("users").child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
-//            @Override
-//            public void onDataChange(@NonNull DataSnapshot snapshot) {
-//                if (snapshot.exists()) {
-//                    User user = snapshot.getValue(User.class);
-//                    if (user != null) {
-//                        if (!TextUtils.isEmpty(user.username)) {
-//                            tvUsername.setText(user.username);
-//                        }
-//                        if (!TextUtils.isEmpty(user.location)) {
-//                            tvLocation.setText(user.location);
-//                        }
-//                    }
-//                } else {
-//                    // No data exists, save default values
-//                    saveUserData();
-//                }
-//            }
-//
-//            @Override
-//            public void onCancelled(@NonNull DatabaseError error) {
-//                Toast.makeText(ProfileActivity.this, "Failed to load profile", Toast.LENGTH_SHORT).show();
-//            }
-//        });
-//    }
-//
-//    private void setupEditButtons() {
-//        findViewById(R.id.edit_username_btn).setOnClickListener(v -> toggleEditMode(etUsername, tvUsername));
-//        findViewById(R.id.edit_location_btn).setOnClickListener(v -> toggleEditMode(etLocation, tvLocation));
-//        findViewById(R.id.save_btn).setOnClickListener(v -> saveAndExitEditMode());
-//        findViewById(R.id.back_btn).setOnClickListener(v -> finish());
-//    }
-//
-//    private void toggleEditMode(EditText et, TextView tv) {
-//        if (!isEditing) {
-//            isEditing = true;
-//            findViewById(R.id.save_btn).setVisibility(View.VISIBLE);
-//            et.setText(tv.getText().toString());
-//            et.setVisibility(View.VISIBLE);
-//            tv.setVisibility(View.GONE);
-//        }
-//    }
-//
-//    private void saveAndExitEditMode() {
-//        // Validate inputs
-//        if (etUsername.getVisibility() == View.VISIBLE &&
-//                TextUtils.isEmpty(etUsername.getText().toString())) {
-//            etUsername.setError("Username cannot be empty");
-//            return;
-//        }
-//
-//        if (etLocation.getVisibility() == View.VISIBLE &&
-//                TextUtils.isEmpty(etLocation.getText().toString())) {
-//            etLocation.setError("Location cannot be empty");
-//            return;
-//        }
-//
-//        // Update TextViews with new values
-//        if (etUsername.getVisibility() == View.VISIBLE) {
-//            tvUsername.setText(etUsername.getText().toString());
-//        }
-//        if (etLocation.getVisibility() == View.VISIBLE) {
-//            tvLocation.setText(etLocation.getText().toString());
-//        }
-//
-//        // Save to Firebase
-//        saveUserData();
-//
-//        // Exit edit mode
-//        isEditing = false;
-//        findViewById(R.id.save_btn).setVisibility(View.GONE);
-//        etUsername.setVisibility(View.GONE);
-//        etLocation.setVisibility(View.GONE);
-//        tvUsername.setVisibility(View.VISIBLE);
-//        tvLocation.setVisibility(View.VISIBLE);
-//    }
-//
-//    private void saveUserData() {
-//        User user = new User(
-//                tvUsername.getText().toString(),
-//                tvEmail.getText().toString(),
-//                tvLocation.getText().toString()
-//        );
-//
-//        mDatabase.child("users").child(userId).setValue(user)
-//                .addOnSuccessListener(aVoid -> Toast.makeText(this, "Profile saved", Toast.LENGTH_SHORT).show())
-//                .addOnFailureListener(e -> Toast.makeText(this, "Save failed", Toast.LENGTH_SHORT).show());
-//    }
-//
-//    public static class User {
-//        public String username, email, location;
-//
-//        public User() {
-//            // Default constructor required for Firebase
-//        }
-//
-//        public User(String username, String email, String location) {
-//            this.username = username;
-//            this.email = email;
-//            this.location = location;
-//        }
-//    }
-//}
+package my.edu.utar.greendefender;
+
+import android.Manifest;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.MediaStore;
+import android.text.TextUtils;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.bumptech.glide.Glide;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
+
+public class ProfileActivity extends AppCompatActivity {
+
+    private static final int REQUEST_IMAGE_PICK = 1;
+    private static final int REQUEST_LOCATION_PERMISSION = 2;
+
+    private TextView tvUsername, tvEmail, tvLocation;
+    private EditText etUsername, etPostcode;
+    private Button editUsernameBtn, saveBtn, changePasswordBtn, logoutBtn, editImageBtn, confirmPostcodeBtn;
+    private ImageView profileImageView;
+
+    private FusedLocationProviderClient fusedLocationClient;
+    private FirebaseAuth mAuth;
+    private FirebaseUser currentUser;
+    private SharedPreferences preferences;
+
+    private static final Pattern MALAYSIA_POSTCODE_PATTERN = Pattern.compile("^(\\d{5})$");
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_profile);
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser();
+        preferences = getSharedPreferences("ProfilePrefs", MODE_PRIVATE);
+
+        // UI component references
+        tvUsername = findViewById(R.id.tv_username);
+        tvEmail = findViewById(R.id.tv_email);
+        tvLocation = findViewById(R.id.tv_location);
+        etUsername = findViewById(R.id.et_username);
+        etPostcode = findViewById(R.id.et_postcode);
+
+        editUsernameBtn = findViewById(R.id.edit_username_btn);
+        saveBtn = findViewById(R.id.save_btn);
+        changePasswordBtn = findViewById(R.id.change_password_btn);
+        logoutBtn = findViewById(R.id.logout_btn);
+        editImageBtn = findViewById(R.id.edit_image_btn);
+        confirmPostcodeBtn = findViewById(R.id.confirm_postcode_btn);
+        profileImageView = findViewById(R.id.profile_image_placeholder);
+
+        // Load saved profile image
+        String savedImageUri = preferences.getString("profile_image", null);
+        if (savedImageUri != null) {
+            Glide.with(this).load(Uri.parse(savedImageUri)).into(profileImageView);
+        }
+
+        if (currentUser != null) {
+            tvUsername.setText(currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "User");
+            tvEmail.setText(currentUser.getEmail());
+        }
+
+        editUsernameBtn.setOnClickListener(v -> {
+            etUsername.setVisibility(View.VISIBLE);
+            etUsername.setText(tvUsername.getText().toString());
+            tvUsername.setVisibility(View.GONE);
+            saveBtn.setVisibility(View.VISIBLE);
+        });
+
+        saveBtn.setOnClickListener(v -> {
+            String newUsername = etUsername.getText().toString().trim();
+
+            if (!TextUtils.isEmpty(newUsername)) {
+                tvUsername.setText(newUsername);
+                tvUsername.setVisibility(View.VISIBLE);
+                etUsername.setVisibility(View.GONE);
+                saveBtn.setVisibility(View.GONE);
+            }
+        });
+
+        confirmPostcodeBtn.setOnClickListener(v -> {
+            String postcode = etPostcode.getText().toString().trim();
+            if (validateMalaysianPostcode(postcode)) {
+                getLocationFromPostcode(postcode);
+            } else {
+                Toast.makeText(this, "Enter a valid Malaysian postcode (e.g. 43000)", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        changePasswordBtn.setOnClickListener(v -> {
+            startActivity(new Intent(ProfileActivity.this, ChangePasswordActivity.class));
+        });
+
+        logoutBtn.setOnClickListener(v -> signOut());
+
+        editImageBtn.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            startActivityForResult(intent, REQUEST_IMAGE_PICK);
+        });
+
+        // Request location permission
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    REQUEST_LOCATION_PERMISSION);
+        }
+    }
+
+    private void getLocationFromPostcode(String postcode) {
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        try {
+            List<Address> addressList = geocoder.getFromLocationName(postcode + ", Malaysia", 1);
+            if (addressList != null && !addressList.isEmpty()) {
+                Address address = addressList.get(0);
+                String fullLocation = address.getAddressLine(0);
+                tvLocation.setText(fullLocation);
+            } else {
+                Toast.makeText(this, "Location not found for the given postcode", Toast.LENGTH_SHORT).show();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Error retrieving location", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private boolean validateMalaysianPostcode(String postcode) {
+        return MALAYSIA_POSTCODE_PATTERN.matcher(postcode).matches();
+    }
+
+    private void signOut() {
+        mAuth.signOut();
+        startActivity(new Intent(ProfileActivity.this, MainActivity.class));
+        finish();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri selectedImageUri = data.getData();
+            profileImageView.setImageURI(selectedImageUri);
+            preferences.edit().putString("profile_image", selectedImageUri.toString()).apply();
+        }
+    }
+}

@@ -1,161 +1,218 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@color/white">
+    android:background="@color/white"
+    android:padding="16dp">
 
-    <!-- Header Section -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="24dp">
+        android:orientation="vertical">
 
-        <Button
-            android:id="@+id/back_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="← Back"
-            android:textColor="@color/coral"
-            android:background="@android:color/transparent"/>
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="My Account"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginLeft="8dp"/>
-    </LinearLayout>
-
-    <!-- Profile Picture Section -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:layout_marginBottom="24dp">
-
-        <TextView
-            android:id="@+id/profile_image_placeholder"
-            android:layout_width="120dp"
-            android:layout_height="120dp"
-            android:gravity="center"
-            android:text="👤"
-            android:textSize="48sp"
-            android:background="@drawable/circle_bg"
-            android:textColor="@color/white"/>
-
-        <Button
-            android:id="@+id/edit_image_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Change Photo"
-            android:textSize="14sp"
-            android:layout_marginTop="8dp"
-            android:backgroundTint="@color/coral"
-            android:textColor="@color/white"/>
-    </LinearLayout>
-
-    <!-- User Info Section -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp"
-        android:background="@drawable/profile_card_bg">
-
-        <!-- Username Row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-
-            <EditText
-                android:id="@+id/et_username"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:visibility="gone"/>
-
-            <TextView
-                android:id="@+id/tv_username"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
-
-            <Button
-                android:id="@+id/edit_username_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Edit"
-                android:backgroundTint="@color/light_mint"
-                android:textColor="@color/black"/>
-        </LinearLayout>
-
-        <!-- Email Row -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Email"
-            android:textColor="@color/black"
-            android:textSize="14sp"/>
-
-        <TextView
-            android:id="@+id/tv_email"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="18sp"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Location Row -->
+        <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_marginBottom="24dp">
 
-            <EditText
-                android:id="@+id/et_location"
+            <Button
+                android:id="@+id/back_btn"
+                android:layout_width="64dp"
+                android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
+                android:drawableLeft="@android:drawable/btn_dialog"
+                android:textColor="@color/coral" />
+
+            <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:text="My Account"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:layout_marginLeft="8dp"
+                android:gravity="left"/>
+        </LinearLayout>
+
+        <!-- Profile Picture -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginBottom="24dp">
+
+            <ImageView
+                android:id="@+id/profile_image_placeholder"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:src="@drawable/default_profile_picture"
+                android:contentDescription="Profile Picture" />
+
+            <Button
+                android:id="@+id/edit_image_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Change Photo"
+                android:textSize="14sp"
+                android:layout_marginTop="8dp"
+                android:backgroundTint="@color/coral"
+                android:textColor="@color/white"/>
+        </LinearLayout>
+
+        <!-- User Info Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:background="@drawable/profile_card_bg">
+
+            <!-- Username -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Username"
+                android:textColor="@color/black"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:id="@+id/tv_username"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/et_username"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Enter Username"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"/>
+
+                <Button
+                    android:id="@+id/edit_username_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Edit"
+                    android:backgroundTint="@color/light_mint"
+                    android:textColor="@color/black"/>
+            </LinearLayout>
+
+            <!-- Email -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Email"
+                android:textColor="@color/black"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:id="@+id/tv_email"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:textSize="18sp"
-                android:visibility="gone"/>
+                android:layout_marginBottom="16dp"/>
+
+            <!-- Postcode with Confirm Button -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Postcode"
+                android:textColor="@color/black"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <EditText
+                    android:id="@+id/et_postcode"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Enter 5-digit Malaysian postcode"
+                    android:inputType="number"
+                    android:maxLength="5"
+                    android:textSize="18sp"/>
+
+                <!-- Confirm Button -->
+                <Button
+                    android:id="@+id/confirm_postcode_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Confirm"
+                    android:textColor="@color/white"
+                    android:backgroundTint="@color/coral"
+                    android:textAllCaps="false"
+                    android:layout_marginLeft="8dp"/>
+            </LinearLayout>
+
+            <!-- Location -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Location"
+                android:textColor="@color/black"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
 
             <TextView
                 android:id="@+id/tv_location"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="18sp"/>
+                android:textSize="18sp"
+                android:layout_marginBottom="24dp"/>
 
+            <!-- Save Changes -->
             <Button
-                android:id="@+id/edit_location_btn"
-                android:layout_width="wrap_content"
+                android:id="@+id/save_btn"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Edit"
-                android:backgroundTint="@color/light_mint"
-                android:textColor="@color/black"/>
+                android:text="SAVE CHANGES"
+                android:backgroundTint="@color/coral"
+                android:textColor="@color/white"
+                android:visibility="gone"/>
         </LinearLayout>
 
-        <!-- Save Button (Hidden by default) -->
+        <!-- Change Password -->
         <Button
-            android:id="@+id/save_btn"
+            android:id="@+id/change_password_btn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="SAVE CHANGES"
-            android:backgroundTint="@color/coral"
+            android:text="Change Password"
             android:textColor="@color/white"
-            android:visibility="gone"/>
+            android:backgroundTint="@color/coral"
+            android:textAllCaps="false"
+            android:layout_marginTop="24dp"/>
+
+        <!-- Logout -->
+        <Button
+            android:id="@+id/logout_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="LOGOUT"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/coral"
+            android:textAllCaps="false"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"/>
     </LinearLayout>
-</LinearLayout>
+</ScrollView>

@@ -5,4 +5,5 @@
     <item name="button" type="id" />
     <item name="button2" type="id" />
     <item name="result" type="id" />
+    <item name="et_postcode" type="id" />
 </resources>

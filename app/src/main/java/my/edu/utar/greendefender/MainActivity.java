@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -39,6 +40,8 @@ public class MainActivity extends AppCompatActivity {
     private ImageView imageView;
     private Button cameraBtn, galleryBtn;
     private TextView resultTextView;
+
+    private ImageButton profile;
 
     // Permissions
     private static final int CAMERA_REQUEST_CODE = 100;
@@ -72,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
         cameraBtn = findViewById(R.id.button);
         galleryBtn = findViewById(R.id.button2);
         resultTextView = findViewById(R.id.result);
+        profile = findViewById(R.id.profileButton);
 
         imageView.setImageResource(R.drawable.leaf);
         resultTextView.setText("Upload a clear image of a rose leaf");
@@ -80,7 +84,11 @@ public class MainActivity extends AppCompatActivity {
     private void setupClickListeners() {
         cameraBtn.setOnClickListener(v -> checkCameraPermission());
         galleryBtn.setOnClickListener(v -> checkStoragePermission());
+        profile.setOnClickListener(v -> {
+            startActivity(new Intent(MainActivity.this, ProfileActivity.class));
+        });
     }
+
 
     private void loadModel() {
         try {
@@ -400,8 +408,8 @@ public class MainActivity extends AppCompatActivity {
                     "The image doesn't match known rose leaf conditions",
                     Toast.LENGTH_LONG).show();
         } else {
-            String result = String.format("%s (%.1f%% confidence)",
-                    CLASSES[maxPos], maxConfidence * 100);
+            String result = String.format("%s",
+                    CLASSES[maxPos]);
             resultTextView.setText(result);
         }
     }

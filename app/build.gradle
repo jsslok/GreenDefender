@@ -42,19 +42,26 @@ android {
 }
 
 dependencies {
+
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
 
-    // Firebase
+    // Firebase BOM for version management
     implementation platform('com.google.firebase:firebase-bom:32.8.0')
+
+    // Firebase libraries (will use the BOM for versions)
     implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.firebase:firebase-firestore'
+    implementation 'com.google.firebase:firebase-storage'
 
     // Google Sign-In
     implementation 'com.google.android.gms:play-services-auth:21.0.0'
+
+    // Location
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
 
     //Tensorflow Lite
     implementation 'org.tensorflow:tensorflow-lite:2.15.0'
@@ -69,4 +76,6 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+
+    implementation 'com.squareup.picasso:picasso:2.71828'
 }
