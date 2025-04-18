@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.location.Address;
 import android.location.Geocoder;
 import android.net.Uri;
@@ -22,8 +23,9 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -36,30 +38,41 @@ public class ProfileActivity extends AppCompatActivity {
 
     private static final int REQUEST_IMAGE_PICK = 1;
     private static final int REQUEST_LOCATION_PERMISSION = 2;
+    private static final Pattern MALAYSIA_POSTCODE_PATTERN = Pattern.compile("^\\d{5}$");
 
     private TextView tvUsername, tvEmail, tvLocation;
     private EditText etUsername, etPostcode;
-    private Button editUsernameBtn, saveBtn, changePasswordBtn, logoutBtn, editImageBtn, confirmPostcodeBtn;
+    private Button backBtn, editUsernameBtn, saveBtn, changePasswordBtn, logoutBtn, editImageBtn, confirmPostcodeBtn;
     private ImageView profileImageView;
 
-    private FusedLocationProviderClient fusedLocationClient;
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
     private SharedPreferences preferences;
 
-    private static final Pattern MALAYSIA_POSTCODE_PATTERN = Pattern.compile("^(\\d{5})$");
+    private GoogleSignInClient mGoogleSignInClient;
+
+    private boolean isEditingPostcode = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        initializeFirebase();
+        initializeViews();
+        loadUserProfile();
+        setupListeners();
+        requestLocationPermission();
+    }
+
+    private void initializeFirebase() {
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
         preferences = getSharedPreferences("ProfilePrefs", MODE_PRIVATE);
+    }
 
-        // UI component references
+    private void initializeViews() {
+        backBtn = findViewById(R.id.back_btn);
         tvUsername = findViewById(R.id.tv_username);
         tvEmail = findViewById(R.id.tv_email);
         tvLocation = findViewById(R.id.tv_location);
@@ -71,65 +84,86 @@ public class ProfileActivity extends AppCompatActivity {
         changePasswordBtn = findViewById(R.id.change_password_btn);
         logoutBtn = findViewById(R.id.logout_btn);
         editImageBtn = findViewById(R.id.edit_image_btn);
-        confirmPostcodeBtn = findViewById(R.id.confirm_postcode_btn);
+        confirmPostcodeBtn = findViewById(R.id.toggle_postcode_btn);
         profileImageView = findViewById(R.id.profile_image_placeholder);
 
-        // Load saved profile image
-        String savedImageUri = preferences.getString("profile_image", null);
-        if (savedImageUri != null) {
-            Glide.with(this).load(Uri.parse(savedImageUri)).into(profileImageView);
+        etPostcode.setEnabled(false);
+        confirmPostcodeBtn.setText("Change Postcode");
+    }
+
+    private void loadUserProfile() {
+        // Profile image
+        String imageUri = preferences.getString("profile_image", null);
+        if (imageUri != null) {
+            Glide.with(this).load(Uri.parse(imageUri)).into(profileImageView);
         }
 
+        // Firebase user
         if (currentUser != null) {
             tvUsername.setText(currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "User");
             tvEmail.setText(currentUser.getEmail());
         }
 
-        editUsernameBtn.setOnClickListener(v -> {
-            etUsername.setVisibility(View.VISIBLE);
-            etUsername.setText(tvUsername.getText().toString());
-            tvUsername.setVisibility(View.GONE);
-            saveBtn.setVisibility(View.VISIBLE);
-        });
+        // Postcode
+        String savedPostcode = preferences.getString("postcode", "");
+        etPostcode.setText(savedPostcode);
+        if (!savedPostcode.isEmpty()) {
+            getLocationFromPostcode(savedPostcode);
+        }
+    }
 
-        saveBtn.setOnClickListener(v -> {
-            String newUsername = etUsername.getText().toString().trim();
+    private void setupListeners() {
+        backBtn.setOnClickListener(v-> onBackPressed());
+        editUsernameBtn.setOnClickListener(v -> enableUsernameEdit());
+        saveBtn.setOnClickListener(v -> saveUsername());
 
-            if (!TextUtils.isEmpty(newUsername)) {
-                tvUsername.setText(newUsername);
-                tvUsername.setVisibility(View.VISIBLE);
-                etUsername.setVisibility(View.GONE);
-                saveBtn.setVisibility(View.GONE);
-            }
-        });
+        changePasswordBtn.setOnClickListener(v -> startActivity(new Intent(this, ChangePasswordActivity.class)));
+        logoutBtn.setOnClickListener(v -> signOut());
 
-        confirmPostcodeBtn.setOnClickListener(v -> {
+        editImageBtn.setOnClickListener(v -> pickImageFromGallery());
+        confirmPostcodeBtn.setOnClickListener(v -> togglePostcodeEditing());
+
+    }
+
+    private void enableUsernameEdit() {
+        etUsername.setVisibility(View.VISIBLE);
+        etUsername.setText(tvUsername.getText().toString());
+        tvUsername.setVisibility(View.GONE);
+        saveBtn.setVisibility(View.VISIBLE);
+    }
+
+    private void saveUsername() {
+        String newUsername = etUsername.getText().toString().trim();
+        if (!TextUtils.isEmpty(newUsername)) {
+            tvUsername.setText(newUsername);
+            etUsername.setVisibility(View.GONE);
+            tvUsername.setVisibility(View.VISIBLE);
+            saveBtn.setVisibility(View.GONE);
+        }
+    }
+
+    private void togglePostcodeEditing() {
+        if (!isEditingPostcode) {
+            etPostcode.setEnabled(true);
+            etPostcode.requestFocus();
+            confirmPostcodeBtn.setText("Confirm");
+            isEditingPostcode = true;
+        } else {
             String postcode = etPostcode.getText().toString().trim();
             if (validateMalaysianPostcode(postcode)) {
+                preferences.edit().putString("postcode", postcode).apply();
                 getLocationFromPostcode(postcode);
+                etPostcode.setEnabled(false);
+                confirmPostcodeBtn.setText("Change Postcode");
+                isEditingPostcode = false;
             } else {
                 Toast.makeText(this, "Enter a valid Malaysian postcode (e.g. 43000)", Toast.LENGTH_SHORT).show();
             }
-        });
-
-        changePasswordBtn.setOnClickListener(v -> {
-            startActivity(new Intent(ProfileActivity.this, ChangePasswordActivity.class));
-        });
-
-        logoutBtn.setOnClickListener(v -> signOut());
-
-        editImageBtn.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            startActivityForResult(intent, REQUEST_IMAGE_PICK);
-        });
-
-        // Request location permission
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    REQUEST_LOCATION_PERMISSION);
         }
+    }
+
+    private boolean validateMalaysianPostcode(String postcode) {
+        return MALAYSIA_POSTCODE_PATTERN.matcher(postcode).matches();
     }
 
     private void getLocationFromPostcode(String postcode) {
@@ -137,9 +171,7 @@ public class ProfileActivity extends AppCompatActivity {
         try {
             List<Address> addressList = geocoder.getFromLocationName(postcode + ", Malaysia", 1);
             if (addressList != null && !addressList.isEmpty()) {
-                Address address = addressList.get(0);
-                String fullLocation = address.getAddressLine(0);
-                tvLocation.setText(fullLocation);
+                tvLocation.setText(addressList.get(0).getAddressLine(0));
             } else {
                 Toast.makeText(this, "Location not found for the given postcode", Toast.LENGTH_SHORT).show();
             }
@@ -149,14 +181,34 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
-    private boolean validateMalaysianPostcode(String postcode) {
-        return MALAYSIA_POSTCODE_PATTERN.matcher(postcode).matches();
+    private void pickImageFromGallery() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(intent, REQUEST_IMAGE_PICK);
+    }
+
+    private void requestLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION_PERMISSION);
+        }
     }
 
     private void signOut() {
-        mAuth.signOut();
-        startActivity(new Intent(ProfileActivity.this, MainActivity.class));
-        finish();
+        FirebaseAuth.getInstance().signOut();
+
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build();
+        GoogleSignInClient googleSignInClient = GoogleSignIn.getClient(this, gso);
+
+        googleSignInClient.signOut().addOnCompleteListener(this, task -> {
+            Intent intent = new Intent(ProfileActivity.this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK); // clear backstack
+            startActivity(intent);
+            finish();
+        });
     }
 
     @Override
@@ -164,8 +216,15 @@ public class ProfileActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri selectedImageUri = data.getData();
-            profileImageView.setImageURI(selectedImageUri);
-            preferences.edit().putString("profile_image", selectedImageUri.toString()).apply();
+            try {
+                Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageUri);
+                Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 300, 300, true);
+                profileImageView.setImageBitmap(resizedBitmap);
+                preferences.edit().putString("profile_image", selectedImageUri.toString()).apply();
+            } catch (IOException e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 }

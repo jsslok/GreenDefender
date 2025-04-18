@@ -128,7 +128,7 @@
                 android:textSize="18sp"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- Postcode with Confirm Button -->
+            <!-- Postcode with Toggle Button -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -151,14 +151,14 @@
                     android:hint="Enter 5-digit Malaysian postcode"
                     android:inputType="number"
                     android:maxLength="5"
-                    android:textSize="18sp"/>
+                    android:textSize="18sp"
+                    android:enabled="false"/>
 
-                <!-- Confirm Button -->
                 <Button
-                    android:id="@+id/confirm_postcode_btn"
+                    android:id="@+id/toggle_postcode_btn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Confirm"
+                    android:text="Change Postcode"
                     android:textColor="@color/white"
                     android:backgroundTint="@color/coral"
                     android:textAllCaps="false"
