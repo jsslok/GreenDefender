@@ -6,4 +6,14 @@
     <item name="button2" type="id" />
     <item name="result" type="id" />
     <item name="et_postcode" type="id" />
+    <item name="change_password_title" type="id" />
+    <item name="current_password_layout" type="id" />
+    <item name="current_password" type="id" />
+    <item name="new_password_layout" type="id" />
+    <item name="new_password" type="id" />
+    <item name="confirm_password_layout" type="id" />
+    <item name="confirm_password" type="id" />
+    <item name="btn_change_password" type="id" />
+    <item name="progress_bar" type="id" />
+    <item name="back_button" type="id" />
 </resources>

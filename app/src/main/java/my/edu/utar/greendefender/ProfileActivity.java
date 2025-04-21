@@ -28,6 +28,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import java.io.IOException;
 import java.util.List;
@@ -53,6 +55,9 @@ public class ProfileActivity extends AppCompatActivity {
 
     private boolean isEditingPostcode = false;
 
+    private FirebaseDatabase mDatabase;
+    private DatabaseReference userRef;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,6 +74,9 @@ public class ProfileActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
         preferences = getSharedPreferences("ProfilePrefs", MODE_PRIVATE);
+
+        mDatabase = FirebaseDatabase.getInstance();
+        userRef = mDatabase.getReference("users");
     }
 
     private void initializeViews() {
@@ -113,7 +121,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        backBtn.setOnClickListener(v-> onBackPressed());
+        backBtn.setOnClickListener(v -> onBackPressed());
         editUsernameBtn.setOnClickListener(v -> enableUsernameEdit());
         saveBtn.setOnClickListener(v -> saveUsername());
 
@@ -122,7 +130,6 @@ public class ProfileActivity extends AppCompatActivity {
 
         editImageBtn.setOnClickListener(v -> pickImageFromGallery());
         confirmPostcodeBtn.setOnClickListener(v -> togglePostcodeEditing());
-
     }
 
     private void enableUsernameEdit() {
@@ -139,6 +146,9 @@ public class ProfileActivity extends AppCompatActivity {
             etUsername.setVisibility(View.GONE);
             tvUsername.setVisibility(View.VISIBLE);
             saveBtn.setVisibility(View.GONE);
+
+            // Save to Firebase
+            saveProfileInfoToFirebase(newUsername, etPostcode.getText().toString(), tvLocation.getText().toString(), preferences.getString("profile_image", ""));
         }
     }
 
@@ -156,6 +166,9 @@ public class ProfileActivity extends AppCompatActivity {
                 etPostcode.setEnabled(false);
                 confirmPostcodeBtn.setText("Change Postcode");
                 isEditingPostcode = false;
+
+                // Save to Firebase
+                saveProfileInfoToFirebase(tvUsername.getText().toString(), postcode, tvLocation.getText().toString(), preferences.getString("profile_image", ""));
             } else {
                 Toast.makeText(this, "Enter a valid Malaysian postcode (e.g. 43000)", Toast.LENGTH_SHORT).show();
             }
@@ -211,6 +224,22 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
+    private void saveProfileInfoToFirebase(String username, String postcode, String location, String imageUrl) {
+        if (currentUser != null) {
+            String userId = currentUser.getUid();
+            User user = new User(username, postcode, location, imageUrl);
+
+            // Upload to Firebase Realtime Database
+            userRef.child(userId).setValue(user).addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    Toast.makeText(ProfileActivity.this, "Profile saved successfully!", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(ProfileActivity.this, "Failed to save profile!", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -221,10 +250,28 @@ public class ProfileActivity extends AppCompatActivity {
                 Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 300, 300, true);
                 profileImageView.setImageBitmap(resizedBitmap);
                 preferences.edit().putString("profile_image", selectedImageUri.toString()).apply();
+
+                // Save image to Firebase
+                saveProfileInfoToFirebase(tvUsername.getText().toString(), etPostcode.getText().toString(), tvLocation.getText().toString(), selectedImageUri.toString());
             } catch (IOException e) {
                 e.printStackTrace();
                 Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
             }
+        }
+    }
+
+    // User model class to represent the user data
+    public static class User {
+        public String username;
+        public String postcode;
+        public String location;
+        public String profileImage;
+
+        public User(String username, String postcode, String location, String profileImage) {
+            this.username = username;
+            this.postcode = postcode;
+            this.location = location;
+            this.profileImage = profileImage;
         }
     }
 }

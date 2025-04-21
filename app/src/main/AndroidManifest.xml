@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" /> <!-- Camera permission -->
     <uses-permission android:name="android.permission.CAMERA" /> <!-- Storage permissions -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> <!-- Camera feature (optional) -->
     <uses-feature android:name="android.hardware.camera" />
     <uses-feature android:name="android.hardware.camera.autofocus" /> <!-- Location permissions -->
