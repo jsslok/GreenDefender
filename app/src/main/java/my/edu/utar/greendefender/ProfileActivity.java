@@ -1,6 +1,7 @@
 package my.edu.utar.greendefender;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -44,7 +45,9 @@ public class ProfileActivity extends AppCompatActivity {
 
     private TextView tvUsername, tvEmail, tvLocation;
     private EditText etUsername, etPostcode;
-    private Button backBtn, editUsernameBtn, saveBtn, changePasswordBtn, logoutBtn, editImageBtn, confirmPostcodeBtn;
+    private Button editUsernameBtn, saveBtn, changePasswordBtn, logoutBtn, editImageBtn, confirmPostcodeBtn;
+
+    private ImageView backBtn;
     private ImageView profileImageView;
 
     private FirebaseAuth mAuth;
@@ -79,6 +82,7 @@ public class ProfileActivity extends AppCompatActivity {
         userRef = mDatabase.getReference("users");
     }
 
+    @SuppressLint("WrongViewCast")
     private void initializeViews() {
         backBtn = findViewById(R.id.back_btn);
         tvUsername = findViewById(R.id.tv_username);
