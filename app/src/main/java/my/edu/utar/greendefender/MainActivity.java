@@ -78,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
         profile = findViewById(R.id.profileButton);
 
         imageView.setImageResource(R.drawable.leaf);
-        resultTextView.setText("Upload a clear image of a rose leaf");
+        resultTextView.setText("Upload an image of a rose leaf with disease");
     }
 
     private void setupClickListeners() {
@@ -108,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
         return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
     }
 
-    // ==================== Enhanced Permission Handling ====================
+    // ====================Permission Handling ====================
     private void checkCameraPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
