@@ -1,21 +1,23 @@
 package my.edu.utar.greendefender;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.location.Address;
 import android.location.Geocoder;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,60 +31,67 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Pattern;
+import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public class ProfileActivity extends AppCompatActivity {
 
     private static final int REQUEST_IMAGE_PICK = 1;
     private static final int REQUEST_LOCATION_PERMISSION = 2;
-    private static final Pattern MALAYSIA_POSTCODE_PATTERN = Pattern.compile("^\\d{5}$");
+    private static final String TAG = "ProfileActivity";
 
+    // UI Components
     private TextView tvUsername, tvEmail, tvLocation;
     private EditText etUsername, etPostcode;
     private Button editUsernameBtn, saveBtn, changePasswordBtn, logoutBtn, editImageBtn, confirmPostcodeBtn;
+    private ImageView backBtn, profileImageView;
+    private ProgressBar progressBar;
 
-    private ImageView backBtn;
-    private ImageView profileImageView;
-
+    // Firebase
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
+    private FirebaseFirestore db;
+    private StorageReference storageRef;
+
+    // Other variables
     private SharedPreferences preferences;
-
     private GoogleSignInClient mGoogleSignInClient;
-
     private boolean isEditingPostcode = false;
-
-    private FirebaseDatabase mDatabase;
-    private DatabaseReference userRef;
+    private Uri selectedImageUri;
+    private final Executor executor = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        initializeFirebase();
+        // Initialize Firebase components
+        mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser();
+        db = FirebaseFirestore.getInstance();
+        storageRef = FirebaseStorage.getInstance().getReference();
+
+        // Initialize SharedPreferences
+        preferences = getSharedPreferences("ProfilePrefs", MODE_PRIVATE);
+
         initializeViews();
         loadUserProfile();
         setupListeners();
         requestLocationPermission();
     }
 
-    private void initializeFirebase() {
-        mAuth = FirebaseAuth.getInstance();
-        currentUser = mAuth.getCurrentUser();
-        preferences = getSharedPreferences("ProfilePrefs", MODE_PRIVATE);
-
-        mDatabase = FirebaseDatabase.getInstance();
-        userRef = mDatabase.getReference("users");
-    }
-
-    @SuppressLint("WrongViewCast")
     private void initializeViews() {
         backBtn = findViewById(R.id.back_btn);
         tvUsername = findViewById(R.id.tv_username);
@@ -90,6 +99,7 @@ public class ProfileActivity extends AppCompatActivity {
         tvLocation = findViewById(R.id.tv_location);
         etUsername = findViewById(R.id.et_username);
         etPostcode = findViewById(R.id.et_postcode);
+
 
         editUsernameBtn = findViewById(R.id.edit_username_btn);
         saveBtn = findViewById(R.id.save_btn);
@@ -104,56 +114,132 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void loadUserProfile() {
-        // Profile image
-        String imageUri = preferences.getString("profile_image", null);
-        if (imageUri != null) {
-            Glide.with(this).load(Uri.parse(imageUri)).into(profileImageView);
-        }
 
-        // Firebase user
+        // Load basic info from Firebase Auth
         if (currentUser != null) {
-            tvUsername.setText(currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "User");
             tvEmail.setText(currentUser.getEmail());
+
+            // Check SharedPreferences first for quick load
+            String cachedUsername = preferences.getString("username", "");
+            String cachedImage = preferences.getString("profile_image", "");
+
+            if (!cachedUsername.isEmpty()) {
+                tvUsername.setText(cachedUsername);
+            }
+
+            if (!cachedImage.isEmpty()) {
+                Glide.with(this)
+                        .load(cachedImage)
+                        .placeholder(R.drawable.default_profile_picture)
+                        .into(profileImageView);
+            }
+
+            // Load from Firestore
+            db.collection("users").document(currentUser.getUid())
+                    .get()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot document = task.getResult();
+                            if (document.exists()) {
+                                updateUIFromDocument(document);
+                            } else {
+                                createNewUserDocument();
+                            }
+                        } else {
+                            Log.w(TAG, "Error loading profile", task.getException());
+                            Toast.makeText(this, "Failed to load profile data", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        }
+    }
+
+    private void updateUIFromDocument(DocumentSnapshot document) {
+        String username = document.getString("username");
+        String postcode = document.getString("postcode");
+        String location = document.getString("location");
+        String imageUrl = document.getString("profileImageUrl");
+
+        // Update UI
+        if (username != null && !username.isEmpty()) {
+            tvUsername.setText(username);
+            preferences.edit().putString("username", username).apply();
+        } else {
+            String displayName = currentUser.getDisplayName();
+            tvUsername.setText(displayName != null ? displayName : "User");
         }
 
-        // Postcode
-        String savedPostcode = preferences.getString("postcode", "");
-        etPostcode.setText(savedPostcode);
-        if (!savedPostcode.isEmpty()) {
-            getLocationFromPostcode(savedPostcode);
+        if (postcode != null) {
+            etPostcode.setText(postcode);
+            if (location != null && !location.isEmpty()) {
+                tvLocation.setText(location);
+            } else if (!postcode.isEmpty()) {
+                loadLocationFromPostcode(postcode);
+            }
         }
+
+        // Load profile image
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            Glide.with(this)
+                    .load(imageUrl)
+                    .placeholder(R.drawable.default_profile_picture)
+                    .into(profileImageView);
+            preferences.edit().putString("profile_image", imageUrl).apply();
+        }
+    }
+
+    private void createNewUserDocument() {
+        if (currentUser == null) return;
+
+        Map<String, Object> user = new HashMap<>();
+        user.put("username", currentUser.getDisplayName() != null ?
+                currentUser.getDisplayName() : "User");
+        user.put("email", currentUser.getEmail());
+        user.put("postcode", "");
+        user.put("location", "");
+        user.put("profileImageUrl", "");
+
+        db.collection("users").document(currentUser.getUid())
+                .set(user)
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "User document created"))
+                .addOnFailureListener(e -> Log.w(TAG, "Error creating user document", e));
     }
 
     private void setupListeners() {
-        backBtn.setOnClickListener(v -> onBackPressed());
-        editUsernameBtn.setOnClickListener(v -> enableUsernameEdit());
-        saveBtn.setOnClickListener(v -> saveUsername());
+        backBtn.setOnClickListener(v -> finish());
 
-        changePasswordBtn.setOnClickListener(v -> startActivity(new Intent(this, ChangePasswordActivity.class)));
+        editUsernameBtn.setOnClickListener(v -> {
+            etUsername.setVisibility(View.VISIBLE);
+            etUsername.setText(tvUsername.getText().toString());
+            tvUsername.setVisibility(View.GONE);
+            saveBtn.setVisibility(View.VISIBLE);
+        });
+
+        saveBtn.setOnClickListener(v -> {
+            String newUsername = etUsername.getText().toString().trim();
+            if (!TextUtils.isEmpty(newUsername)) {
+                tvUsername.setText(newUsername);
+                etUsername.setVisibility(View.GONE);
+                tvUsername.setVisibility(View.VISIBLE);
+                saveBtn.setVisibility(View.GONE);
+                saveProfileToFirestore();
+            } else {
+                Toast.makeText(this, "Username cannot be empty", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        changePasswordBtn.setOnClickListener(v ->
+                startActivity(new Intent(this, ChangePasswordActivity.class)));
+
         logoutBtn.setOnClickListener(v -> signOut());
 
-        editImageBtn.setOnClickListener(v -> pickImageFromGallery());
+        editImageBtn.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_PICK,
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            intent.setType("image/*");
+            startActivityForResult(intent, REQUEST_IMAGE_PICK);
+        });
+
         confirmPostcodeBtn.setOnClickListener(v -> togglePostcodeEditing());
-    }
-
-    private void enableUsernameEdit() {
-        etUsername.setVisibility(View.VISIBLE);
-        etUsername.setText(tvUsername.getText().toString());
-        tvUsername.setVisibility(View.GONE);
-        saveBtn.setVisibility(View.VISIBLE);
-    }
-
-    private void saveUsername() {
-        String newUsername = etUsername.getText().toString().trim();
-        if (!TextUtils.isEmpty(newUsername)) {
-            tvUsername.setText(newUsername);
-            etUsername.setVisibility(View.GONE);
-            tvUsername.setVisibility(View.VISIBLE);
-            saveBtn.setVisibility(View.GONE);
-
-            // Save to Firebase
-            saveProfileInfoToFirebase(newUsername, etPostcode.getText().toString(), tvLocation.getText().toString(), preferences.getString("profile_image", ""));
-        }
     }
 
     private void togglePostcodeEditing() {
@@ -165,49 +251,154 @@ public class ProfileActivity extends AppCompatActivity {
         } else {
             String postcode = etPostcode.getText().toString().trim();
             if (validateMalaysianPostcode(postcode)) {
-                preferences.edit().putString("postcode", postcode).apply();
-                getLocationFromPostcode(postcode);
                 etPostcode.setEnabled(false);
                 confirmPostcodeBtn.setText("Change Postcode");
                 isEditingPostcode = false;
-
-                // Save to Firebase
-                saveProfileInfoToFirebase(tvUsername.getText().toString(), postcode, tvLocation.getText().toString(), preferences.getString("profile_image", ""));
+                loadLocationFromPostcode(postcode);
+                saveProfileToFirestore();
             } else {
-                Toast.makeText(this, "Enter a valid Malaysian postcode (e.g. 43000)", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Enter a valid Malaysian postcode (5 digits)", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
     private boolean validateMalaysianPostcode(String postcode) {
-        return MALAYSIA_POSTCODE_PATTERN.matcher(postcode).matches();
+        return postcode.matches("^\\d{5}$");
     }
 
-    private void getLocationFromPostcode(String postcode) {
-        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-        try {
-            List<Address> addressList = geocoder.getFromLocationName(postcode + ", Malaysia", 1);
-            if (addressList != null && !addressList.isEmpty()) {
-                tvLocation.setText(addressList.get(0).getAddressLine(0));
-            } else {
-                Toast.makeText(this, "Location not found for the given postcode", Toast.LENGTH_SHORT).show();
+    private void loadLocationFromPostcode(String postcode) {
+
+        executor.execute(() -> {
+            try {
+                Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+                List<Address> addresses = geocoder.getFromLocationName(postcode + ", Malaysia", 1);
+
+                mainHandler.post(() -> {
+                    if (addresses != null && !addresses.isEmpty()) {
+                        Address address = addresses.get(0);
+                        String location = address.getAddressLine(0);
+                        tvLocation.setText(location);
+                        saveLocationToFirestore(location);
+                    } else {
+                        Toast.makeText(this, "Location not found for this postcode", Toast.LENGTH_SHORT).show();
+                        tvLocation.setText("");
+                    }
+                });
+            } catch (IOException e) {
+                mainHandler.post(() -> {
+                    Toast.makeText(this, "Error getting location: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "Geocoder error", e);
+                });
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Error retrieving location", Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void saveLocationToFirestore(String location) {
+        if (currentUser == null) return;
+
+        db.collection("users").document(currentUser.getUid())
+                .update("location", location)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Location updated successfully");
+                    preferences.edit().putString("location", location).apply();
+                })
+                .addOnFailureListener(e -> {
+                    Log.w(TAG, "Error updating location", e);
+                });
+    }
+
+    private void saveProfileToFirestore() {
+        if (currentUser == null) return;
+
+        // First upload image if selected
+        if (selectedImageUri != null) {
+            uploadImageAndSaveProfile();
+        } else {
+            saveProfileDataToFirestore(null);
         }
     }
 
-    private void pickImageFromGallery() {
-        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        startActivityForResult(intent, REQUEST_IMAGE_PICK);
+    private void uploadImageAndSaveProfile() {
+        String filename = "profile_" + currentUser.getUid() + "_" + System.currentTimeMillis();
+        StorageReference imageRef = storageRef.child("profile_images/" + filename);
+
+        imageRef.putFile(selectedImageUri)
+                .addOnProgressListener(taskSnapshot -> {
+                    double progress = (100.0 * taskSnapshot.getBytesTransferred()) / taskSnapshot.getTotalByteCount();
+                    Log.d(TAG, "Upload is " + progress + "% done");
+                })
+                .addOnSuccessListener(taskSnapshot -> {
+                    // Get download URL
+                    imageRef.getDownloadUrl()
+                            .addOnSuccessListener(uri -> {
+                                String imageUrl = uri.toString();
+                                saveProfileDataToFirestore(imageUrl);
+                            })
+                            .addOnFailureListener(e -> {
+                                Log.w(TAG, "Error getting download URL", e);
+                                Toast.makeText(this, "Failed to get image URL", Toast.LENGTH_SHORT).show();
+                                saveProfileDataToFirestore(null);
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    Log.w(TAG, "Error uploading image", e);
+                    Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show();
+                    saveProfileDataToFirestore(null);
+                });
+    }
+
+    private void saveProfileDataToFirestore(String imageUrl) {
+        DocumentReference userRef = db.collection("users").document(currentUser.getUid());
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("username", tvUsername.getText().toString());
+        updates.put("postcode", etPostcode.getText().toString());
+
+        if (imageUrl != null) {
+            updates.put("profileImageUrl", imageUrl);
+            preferences.edit().putString("profile_image", imageUrl).apply();
+        }
+
+        userRef.update(updates)
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Profile updated successfully", Toast.LENGTH_SHORT).show();
+
+                    // Update local preferences
+                    SharedPreferences.Editor editor = preferences.edit();
+                    editor.putString("username", tvUsername.getText().toString());
+                    editor.putString("postcode", etPostcode.getText().toString());
+                    editor.apply();
+
+                })
+                .addOnFailureListener(e -> {
+                    Log.w(TAG, "Error updating profile", e);
+                    Toast.makeText(this, "Failed to update profile", Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK && data != null) {
+            selectedImageUri = data.getData();
+            if (selectedImageUri != null) {
+                Glide.with(this)
+                        .load(selectedImageUri)
+                        .placeholder(R.drawable.default_profile_picture)
+                        .circleCrop()
+                        .into(profileImageView);
+
+                // Save to Firestore will happen when user clicks save
+            }
+        }
     }
 
     private void requestLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION_PERMISSION);
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    REQUEST_LOCATION_PERMISSION);
         }
     }
 
@@ -222,60 +413,11 @@ public class ProfileActivity extends AppCompatActivity {
 
         googleSignInClient.signOut().addOnCompleteListener(this, task -> {
             Intent intent = new Intent(ProfileActivity.this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK); // clear backstack
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             finish();
         });
     }
 
-    private void saveProfileInfoToFirebase(String username, String postcode, String location, String imageUrl) {
-        if (currentUser != null) {
-            String userId = currentUser.getUid();
-            User user = new User(username, postcode, location, imageUrl);
 
-            // Upload to Firebase Realtime Database
-            userRef.child(userId).setValue(user).addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    Toast.makeText(ProfileActivity.this, "Profile saved successfully!", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(ProfileActivity.this, "Failed to save profile!", Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri selectedImageUri = data.getData();
-            try {
-                Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageUri);
-                Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 300, 300, true);
-                profileImageView.setImageBitmap(resizedBitmap);
-                preferences.edit().putString("profile_image", selectedImageUri.toString()).apply();
-
-                // Save image to Firebase
-                saveProfileInfoToFirebase(tvUsername.getText().toString(), etPostcode.getText().toString(), tvLocation.getText().toString(), selectedImageUri.toString());
-            } catch (IOException e) {
-                e.printStackTrace();
-                Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    // User model class to represent the user data
-    public static class User {
-        public String username;
-        public String postcode;
-        public String location;
-        public String profileImage;
-
-        public User(String username, String postcode, String location, String profileImage) {
-            this.username = username;
-            this.postcode = postcode;
-            this.location = location;
-            this.profileImage = profileImage;
-        }
-    }
 }
